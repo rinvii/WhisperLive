@@ -1,4 +1,3 @@
-import sys
 import argparse
 import time
 import threading
@@ -6,9 +5,8 @@ import math
 import tkinter as tk
 import numpy as np
 import sounddevice as sd
-import pyperclip
 from pynput import keyboard
-from pynput.keyboard import Controller, Key
+from pynput.keyboard import Controller
 from whisper_live.client import TranscriptionClient
 
 
@@ -45,47 +43,6 @@ class AudioFeedback:
 
             audio = wave * envelope * 0.15
             sd.play(audio.astype(np.float32), self.sample_rate)
-        except Exception:
-            pass
-
-    def play_success(self, word_count):
-        """Plays a fixed sequence of cute pentatonic chirps on success."""
-        if not self.enabled:
-            return
-        try:
-            if word_count <= 0:
-                return
-
-            # Pentatonic scale (High/Cute): C6, D6, E6, G6, A6
-            scale = [1046.50, 1174.66, 1318.51, 1567.98, 1760.00]
-            note_dur = 0.05  # 50ms per chirp (slightly faster)
-            gap_dur = 0.015  # 15ms gap
-
-            # Fixed 3 chirps for a snappy "success" sound
-            play_count = 3
-
-            full_audio = []
-
-            for _ in range(play_count):
-                # Pick 3 random notes for a unique "bloop" each time
-                freq = scale[np.random.randint(0, len(scale))]
-
-                t = np.linspace(0, note_dur, int(self.sample_rate * note_dur), False)
-
-                # Bubble sound: Sine wave with rapid pitch bend + Gaussian envelope
-                freq_sweep = np.linspace(freq, freq * 0.85, len(t))
-                wave = np.sin(2 * np.pi * freq_sweep * t)
-
-                # Gaussian envelope for soft "bloop"
-                envelope = np.exp(-0.5 * ((t - note_dur / 2) / (note_dur / 6)) ** 2)
-
-                chunk = wave * envelope
-                full_audio.append(chunk)
-                full_audio.append(np.zeros(int(self.sample_rate * gap_dur)))  # Gap
-
-            audio_data = np.concatenate(full_audio) * 0.12  # Slightly lower volume
-            sd.play(audio_data.astype(np.float32), self.sample_rate)
-
         except Exception:
             pass
 
@@ -214,25 +171,26 @@ class KeyboardTranscriptionClient:
         if not self.is_listening:
             # Start Listening
             # Ensure connection is ready
-            if not self.client or not getattr(self.client.client, 'recording', False):
-                print('[INFO]: Re-establishing connection...')
+            if not self.client or not getattr(self.client.client, "recording", False):
+                print("[INFO]: Re-establishing connection...")
                 self._connect()
-                
+
                 # Wait for server to be ready (max 5 seconds)
                 for _ in range(50):
-                    if self.client and getattr(self.client.client, 'recording', False):
+                    if self.client and getattr(self.client.client, "recording", False):
                         break
                     time.sleep(0.1)
                 else:
-                    print('[ERROR]: Connection timeout. Server not ready.')
+                    print("[ERROR]: Connection timeout. Server not ready.")
                     return
 
             self.audio.play_activation(active=True)
             self.base_segment_count = len(self.current_segments)
             self.is_listening = True
-            print('\n[MIC]: ON')
-            if self.use_ui: self.root.attributes('-alpha', 1.0)
-            
+            print("\n[MIC]: ON")
+            if self.use_ui:
+                self.root.attributes("-alpha", 1.0)
+
             # Start burst timer
             self.stop_timer = threading.Timer(self.BURST_LIMIT, self.force_stop_burst)
             self.stop_timer.start()
@@ -267,10 +225,6 @@ class KeyboardTranscriptionClient:
                 if text:
                     self.injector.inject(text)
                     print(f"[SUCCESS]: {text}")
-                    # Play word chirps in background
-                    threading.Thread(
-                        target=self.audio.play_success, args=(len(text.split()),)
-                    ).start()
             else:
                 print("[INFO]: No new speech detected.")
 
