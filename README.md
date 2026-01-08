@@ -1,30 +1,37 @@
 # WhisperLive (Lightweight Client)
 
-A fork of Collabora's WhisperLive optimized for easier installation and global keyboard dictation.
+A fork of WhisperLive designed for global keyboard dictation. This tool allows you to use your own private, GPU-accelerated server to dictate text directly into any application on your computer.
 
-## Key Changes
-- Swapped `PyAudio` for `sounddevice` for cross-platform compatibility.
-- Made `av` (FFmpeg) optional to support legacy systems (macOS 10.15+).
-- Added `run_client_keyboard.py` for OS-level dictation via hotkey toggle.
-- Implemented "Burst-Typing" logic to eliminate real-time word stuttering.
+## Features
 
-## Alternative to Commercial Tools
-This provides a private, self-hosted alternative to proprietary dictation software. It uses a remote GPU for inference while acting as a local keyboard input on your workstation.
+- **Global Hotkey:** Toggle dictation from anywhere (Default: Right Option).
+- **Audio & Visual Feedback:** Gentle chirps and a minimal overlay confirm when you are recording.
+- **Safety:** Automatic timeout ensures your microphone doesn't stay open by accident.
 
 ## Setup
+
 1. **Install Dependencies**:
+
    ```bash
-   uv pip install sounddevice numpy websocket-client pynput scipy
+   pip install -r requirements/client.txt
    ```
 
-2. **Run Client**:
+2. **Run Server** (on your GPU machine):
+
    ```bash
-   python run_client_keyboard.py --server YOUR_SERVER_IP:9095
+   python run_server.py --port 9095
    ```
 
-3. **Usage**:
-   - Tap **RIGHT SHIFT** to start/stop recording.
-   - Text is typed automatically into the active window when finished.
+3. **Run Client**:
+   ```bash
+   python run_client_keyboard.py --server YOUR_SERVER_IP --port 9095 --ui --audio
+   ```
 
-## Original Project
-For the full server setup and TensorRT acceleration, see the [Collabora WhisperLive Repository](https://github.com/collabora/WhisperLive).
+## Usage
+
+- **Toggle Recording:** Press **Right Option (Alt)**.
+- **Dictate:** Speak clearly; text will type out automatically.
+
+---
+
+_Based on the [Collabora WhisperLive Repository](https://github.com/collabora/WhisperLive)._

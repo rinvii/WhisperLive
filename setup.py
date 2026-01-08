@@ -43,11 +43,12 @@ setup(
     ),
         install_requires=[
             "numpy",
+            "scipy",
             "sounddevice",
             "websocket-client",
+            "pynput",
+            "pyperclip",
             "openai-whisper",
             "faster-whisper",
-            "ffmpeg-python",
-            "av",
         ],    python_requires=">=3.9"
 )

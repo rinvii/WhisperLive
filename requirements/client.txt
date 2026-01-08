@@ -1,4 +1,6 @@
 sounddevice
 numpy
 websocket-client
-av
+scipy
+pynput
+pyperclip
