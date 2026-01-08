@@ -1,5 +1,6 @@
 import sys
 import argparse
+import time
 from pynput import keyboard
 from pynput.keyboard import Controller, Key
 from whisper_live.client import TranscriptionClient
@@ -8,9 +9,8 @@ class KeyboardTranscriptionClient:
     def __init__(self, host, port, model, lang):
         self.keyboard_controller = Controller()
         self.is_listening = False
-        self.accumulated_text = ''
-        self.last_full_text = ''
-        self.start_offset = 0
+        self.base_segment_count = 0
+        self.current_segments = []
         
         print(f'[INFO]: Initializing Keyboard Client...')
         print(f'[INFO]: Press RIGHT SHIFT to Start/Stop Listening')
@@ -24,6 +24,7 @@ class KeyboardTranscriptionClient:
             transcription_callback=self.on_transcription
         )
         
+        # Patch the client's multicast_packet to respect our toggle
         original_multicast = self.client.multicast_packet
         def gated_multicast(packet, unconditional=False):
             if self.is_listening or unconditional:
@@ -31,28 +32,31 @@ class KeyboardTranscriptionClient:
         self.client.multicast_packet = gated_multicast
 
     def on_transcription(self, full_text, segments):
-        self.last_full_text = full_text
-        if self.is_listening:
-            # Only take the text that has appeared since we started this burst
-            self.accumulated_text = full_text[self.start_offset:].strip()
+        self.current_segments = segments
 
     def toggle_listening(self):
         self.is_listening = not self.is_listening
         
         if self.is_listening:
-            # Mark the current end of the global transcript as our starting point
-            self.start_offset = len(self.last_full_text)
-            self.accumulated_text = ''
+            # Capture how many segments existed before we started this burst
+            self.base_segment_count = len(self.current_segments)
             print('\n[MIC]: ON - Speak now...')
         else:
             print('\n[MIC]: OFF - Processing...')
-            if self.accumulated_text:
-                self.keyboard_controller.type(self.accumulated_text + ' ')
-                print(f'[TYPED]: {self.accumulated_text}')
-                # Update offset so we dont double-type if we start again immediately
-                self.start_offset = len(self.last_full_text)
+            # Small delay to allow the last chunk to reach on_transcription
+            time.sleep(0.4)
+            
+            # Type only the NEW segments
+            new_segments = self.current_segments[self.base_segment_count:]
+            if new_segments:
+                text_to_type = " ".join([s['text'].strip() for s in new_segments if s['text'].strip()])
+                if text_to_type:
+                    self.keyboard_controller.type(text_to_type + ' ')
+                    print(f'[TYPED]: {text_to_type}')
+                else:
+                    print('[INFO]: No speech detected in segments.')
             else:
-                print('[INFO]: No speech detected.')
+                print('[INFO]: No segments captured.')
 
     def run(self):
         def on_press(key):
@@ -70,17 +74,18 @@ class KeyboardTranscriptionClient:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--server', '-s', type=str, default='localhost:9095')
+    parser.add_argument('--server', '-s', type=str, default='localhost')
+    parser.add_argument('--port', '-p', type=int, default=9095)
     parser.add_argument('--model', '-m', type=str, default='small')
     parser.add_argument('--lang', '-l', type=str, default='en')
     args = parser.parse_args()
 
+    # Handle IP:PORT format in --server
     if ':' in args.server:
         host, port = args.server.split(':')
-        port = int(port)
-    else:
-        host = args.server
-        port = 9095
+        args.server = host
+        args.port = int(port)
+        print(f'[INFO]: Using server {args.server} on port {args.port}')
 
-    app = KeyboardTranscriptionClient(host, port, args.model, args.lang)
+    app = KeyboardTranscriptionClient(args.server, args.port, args.model, args.lang)
     app.run()
