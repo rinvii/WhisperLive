@@ -213,17 +213,26 @@ class KeyboardTranscriptionClient:
     def toggle_listening(self):
         if not self.is_listening:
             # Start Listening
-            if not self.client or not self.client.client.recording:
+            # Ensure connection is ready
+            if not self.client or not getattr(self.client.client, 'recording', False):
+                print('[INFO]: Re-establishing connection...')
                 self._connect()
-                time.sleep(0.3)
+                
+                # Wait for server to be ready (max 5 seconds)
+                for _ in range(50):
+                    if self.client and getattr(self.client.client, 'recording', False):
+                        break
+                    time.sleep(0.1)
+                else:
+                    print('[ERROR]: Connection timeout. Server not ready.')
+                    return
 
             self.audio.play_activation(active=True)
             self.base_segment_count = len(self.current_segments)
             self.is_listening = True
-            print("\n[MIC]: ON")
-            if self.use_ui:
-                self.root.attributes("-alpha", 1.0)
-
+            print('\n[MIC]: ON')
+            if self.use_ui: self.root.attributes('-alpha', 1.0)
+            
             # Start burst timer
             self.stop_timer = threading.Timer(self.BURST_LIMIT, self.force_stop_burst)
             self.stop_timer.start()
