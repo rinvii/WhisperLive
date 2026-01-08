@@ -2,8 +2,12 @@ import os
 import textwrap
 import scipy
 import numpy as np
-import av
+try:
+    import av
+except ImportError:
+    av = None
 from pathlib import Path
+import subprocess
 
 
 def clear_screen():
@@ -54,30 +58,45 @@ def resample(file: str, sr: int = 16000):
     Returns:
         resampled_file (str): The resampled audio file
     """
-    container = av.open(file)
-    stream = next(s for s in container.streams if s.type == 'audio')
-
-    resampler = av.AudioResampler(
-        format='s16',
-        layout='mono',
-        rate=sr,
-    )
-
     resampled_file = Path(file).stem + "_resampled.wav"
-    output_container = av.open(resampled_file, mode='w')
-    output_stream = output_container.add_stream('pcm_s16le', rate=sr)
-    output_stream.layout = 'mono'
+    
+    if av is not None:
+        container = av.open(file)
+        stream = next(s for s in container.streams if s.type == 'audio')
 
-    for frame in container.decode(audio=0):
-        frame.pts = None
-        resampled_frames = resampler.resample(frame)
-        if resampled_frames is not None:
-            for resampled_frame in resampled_frames:
-                for packet in output_stream.encode(resampled_frame):
-                    output_container.mux(packet)
+        resampler = av.AudioResampler(
+            format='s16',
+            layout='mono',
+            rate=sr,
+        )
 
-    for packet in output_stream.encode(None):
-        output_container.mux(packet)
+        output_container = av.open(resampled_file, mode='w')
+        output_stream = output_container.add_stream('pcm_s16le', rate=sr)
+        output_stream.layout = 'mono'
 
-    output_container.close()
+        for frame in container.decode(audio=0):
+            frame.pts = None
+            resampled_frames = resampler.resample(frame)
+            if resampled_frames is not None:
+                for resampled_frame in resampled_frames:
+                    for packet in output_stream.encode(resampled_frame):
+                        output_container.mux(packet)
+
+        for packet in output_stream.encode(None):
+            output_container.mux(packet)
+
+        output_container.close()
+    else:
+        # Fallback to ffmpeg command line
+        print(f"[INFO]: 'av' not found, using ffmpeg for resampling...")
+        try:
+            subprocess.run([
+                'ffmpeg', '-y', '-i', file,
+                '-ar', str(sr), '-ac', '1',
+                resampled_file
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"[ERROR]: ffmpeg resampling failed: {e}")
+            raise ImportError("Resampling requires 'av' python package or 'ffmpeg' installed on the system.")
+            
     return resampled_file

@@ -1,4 +1,4 @@
-PyAudio
-av
-scipy
+sounddevice
+numpy
 websocket-client
+av

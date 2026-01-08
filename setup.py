@@ -41,27 +41,13 @@ setup(
             "whisper-finetuning"
         )
     ),
-    install_requires=[
-        "PyAudio",
-        "faster-whisper==1.1.0",
-        "torch",
-        "torchaudio",
-        "websockets",
-        "onnxruntime==1.17.0",
-        "scipy",
-        "websocket-client",
-        "numba",
-        "openai-whisper==20240930",
-        "kaldialign",
-        "soundfile",
-        "tokenizers==0.20.3",
-        "librosa",
-        "numpy==1.26.4",
-        "openvino",
-        "openvino-genai",
-        "openvino-tokenizers",
-        "optimum", 
-        "optimum-intel",
-    ],
-    python_requires=">=3.9"
+        install_requires=[
+            "numpy",
+            "sounddevice",
+            "websocket-client",
+            "openai-whisper",
+            "faster-whisper",
+            "ffmpeg-python",
+            "av",
+        ],    python_requires=">=3.9"
 )
