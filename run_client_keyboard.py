@@ -287,10 +287,11 @@ class KeyboardTranscriptionClient:
             self.root.mainloop()
         else:
             print(info_str)
-            while True:
-                time.sleep(10)
-                if self.client and not self.client.client.recording:
-                    self._connect()
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                print("\n[INFO]: Exiting...")
 
 
 if __name__ == "__main__":
